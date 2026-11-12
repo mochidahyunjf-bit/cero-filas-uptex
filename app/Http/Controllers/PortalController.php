@@ -73,7 +73,7 @@ class PortalController extends Controller
             DB::table('bitacora_auditoria')->insert(['usuario_id' => $u->id, 'modulo' => 'Tickets', 'accion' => "Reporte de falla $folio", 'entidad_afectada' => 'tickets_mantenimiento']);
         });
 
-        return back()->with('ok', "Ticket $folio levantado. Coordinación de Laboratorios ya fue notificada.");
+        return back()->with('ok', "Ticket $folio levantado. Ya aparece en el panel de supervisión.");
     }
 
     public function reservar(Request $request)
