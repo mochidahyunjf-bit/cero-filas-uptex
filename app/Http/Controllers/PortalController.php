@@ -21,6 +21,11 @@ class PortalController extends Controller
                     ->where('prestamo_id', $p->id)->get(['a.codigo_inventario', 'd.estado_devolucion']);
                 return $p;
             }),
+            'misUnidades' => DB::table('prestamo_detalles as d')->join('prestamos as p', 'p.id', '=', 'd.prestamo_id')
+                ->join('activos_unidades as a', 'a.id', '=', 'd.activo_unidad_id')->join('articulos_catalogo as c', 'c.id', '=', 'a.articulo_catalogo_id')
+                ->where('p.solicitante_id', $u->id)->where('d.estado_devolucion', 'Pendiente')->get(['a.codigo_inventario', 'c.nombre']),
+            'tickets' => DB::table('tickets_mantenimiento as t')->join('activos_unidades as a', 'a.id', '=', 't.activo_unidad_id')
+                ->where('t.reportado_por', $u->id)->latest('t.id')->limit(10)->get(['t.folio_ticket', 't.estado', 't.descripcion_falla', 'a.codigo_inventario']),
             'fecha' => $fecha,
             'labs' => DB::table('laboratorios')->get(),
             'bloques' => DB::table('bloques_horarios')->get(),
@@ -40,6 +45,35 @@ class PortalController extends Controller
         $u->save();
 
         return back()->with('qr', $u->qr_token);
+    }
+
+    public function reportar(Request $request)
+    {
+        $request->validate(['codigo' => 'required', 'descripcion' => 'required|min:5|max:500']);
+        $u = $request->user();
+        $unidad = DB::table('activos_unidades')->where('codigo_inventario', strtoupper(trim($request->codigo)))->first();
+        if (! $unidad) return back()->withErrors(['codigo' => 'No existe una unidad con ese código.']);
+        if (DB::table('tickets_mantenimiento')->where('activo_unidad_id', $unidad->id)->whereIn('estado', ['Abierto', 'En_Diagnostico'])->exists()) {
+            return back()->withErrors(['codigo' => 'Esa unidad ya tiene un ticket abierto.']);
+        }
+        $prestamo = DB::table('prestamo_detalles')->where('activo_unidad_id', $unidad->id)->where('estado_devolucion', 'Pendiente')->value('prestamo_id');
+        $folio = sprintf('TCK-2026-%04d', DB::table('tickets_mantenimiento')->max('id') + 1);
+
+        DB::transaction(function () use ($u, $unidad, $prestamo, $folio, $request) {
+            DB::table('tickets_mantenimiento')->insert([
+                'folio_ticket' => $folio, 'activo_unidad_id' => $unidad->id, 'prestamo_id' => $prestamo, 'reportado_por' => $u->id,
+                'origen_reporte' => $u->tieneRol('Docente') ? 'Reporte_Docente' : 'Reporte_Alumno', 'descripcion_falla' => $request->descripcion,
+                'prioridad' => 'Media', 'estado' => 'Abierto', 'created_at' => now(), 'updated_at' => now(),
+            ]);
+            // Si está en anaquel se retira del stock; si está prestada se retira al devolverla
+            if ($unidad->estado_fisico === 'Disponible') {
+                DB::table('activos_unidades')->where('id', $unidad->id)->update(['estado_fisico' => 'En_Mantenimiento']);
+                DB::table('articulos_catalogo')->where('id', $unidad->articulo_catalogo_id)->decrement('stock_disponible');
+            }
+            DB::table('bitacora_auditoria')->insert(['usuario_id' => $u->id, 'modulo' => 'Tickets', 'accion' => "Reporte de falla $folio", 'entidad_afectada' => 'tickets_mantenimiento']);
+        });
+
+        return back()->with('ok', "Ticket $folio levantado. Coordinación de Laboratorios ya fue notificada.");
     }
 
     public function reservar(Request $request)

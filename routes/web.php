@@ -27,6 +27,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/ventanilla', [DeskController::class, 'index'])->middleware('rol:Administrador,Supervisor')->name('ventanilla');
         Route::middleware('rol:Alumno,Docente')->group(function () {
             Route::post('/portal/qr', [PortalController::class, 'qr'])->name('portal.qr');
+            Route::post('/portal/reportar', [PortalController::class, 'reportar'])->name('portal.reportar');
             Route::post('/portal/reservar', [PortalController::class, 'reservar'])->name('portal.reservar');
         });
         Route::middleware('rol:Administrador,Supervisor')->group(function () {

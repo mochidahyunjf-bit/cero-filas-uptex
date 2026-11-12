@@ -38,6 +38,33 @@
     </section>
 </div>
 
+<section class="mt-4 rounded-2xl border border-uptex-borde bg-white p-5 shadow-sm">
+    <h2 class="mb-1 font-semibold">Reportar falla de equipo</h2>
+    <p class="mb-3 text-xs text-uptex-gris">Levanta un ticket si una unidad no funciona. Reportarlo a tiempo evita sanciones por daño no reportado.</p>
+    <form method="POST" action="{{ route('portal.reportar') }}" class="grid gap-2 sm:grid-cols-3">@csrf
+        <div class="sm:col-span-1">
+            <input id="codigoFalla" name="codigo" required value="{{ old('codigo') }}" placeholder="Código, ej. UPTEX-HDMI-003" class="w-full rounded-lg border border-uptex-borde p-2 text-sm">
+            @if ($misUnidades->isNotEmpty())
+                <select onchange="codigoFalla.value=this.value" class="mt-2 w-full rounded-lg border border-uptex-borde p-2 text-xs">
+                    <option value="">O elige una unidad que tienes prestada…</option>
+                    @foreach ($misUnidades as $m)<option value="{{ $m->codigo_inventario }}">{{ $m->codigo_inventario }} — {{ $m->nombre }}</option>@endforeach
+                </select>
+            @endif
+        </div>
+        <textarea name="descripcion" required rows="2" placeholder="¿Qué falla tiene?" class="rounded-lg border border-uptex-borde p-2 text-sm sm:col-span-2">{{ old('descripcion') }}</textarea>
+        <button class="rounded-lg bg-uptex-rojo p-2 font-semibold text-white sm:col-span-3">✕ Levantar ticket de falla</button>
+    </form>
+    @if ($tickets->isNotEmpty())
+        <h3 class="mb-2 mt-4 text-sm font-semibold">Mis tickets</h3>
+        @foreach ($tickets as $t)
+            <div class="mb-2 flex justify-between gap-2 rounded-xl border border-uptex-borde p-3 text-sm">
+                <div><b>{{ $t->folio_ticket }}</b> · {{ $t->codigo_inventario }}<div class="text-xs text-uptex-gris">{{ $t->descripcion_falla }}</div></div>
+                <span class="h-fit rounded-full px-2 text-xs {{ $t->estado === 'Reparado' ? 'bg-uptex text-white' : 'bg-uptex-rojo/10 text-uptex-rojo' }}">{{ str_replace('_', ' ', $t->estado) }}</span>
+            </div>
+        @endforeach
+    @endif
+</section>
+
 @if ($u->tieneRol('Docente'))
 <section class="mt-4 rounded-2xl border border-uptex-borde bg-white p-5 shadow-sm">
     <div class="mb-3 flex flex-wrap items-center justify-between gap-2">

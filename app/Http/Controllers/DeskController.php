@@ -76,8 +76,11 @@ class DeskController extends Controller
         DB::transaction(function () use ($det, $request) {
             $falla = $request->estado === 'Con_Falla';
             DB::table('prestamo_detalles')->where('id', $det->id)->update(['estado_devolucion' => $request->estado, 'nota_devolucion' => $request->nota]);
-            DB::table('activos_unidades')->where('id', $det->unidad_id)->update(['estado_fisico' => $falla ? 'En_Mantenimiento' : 'Disponible']);
-            if ($falla) {
+            $ticketPrevio = DB::table('tickets_mantenimiento')->where('activo_unidad_id', $det->unidad_id)->whereIn('estado', ['Abierto', 'En_Diagnostico'])->exists();
+            DB::table('activos_unidades')->where('id', $det->unidad_id)->update(['estado_fisico' => ($falla || $ticketPrevio) ? 'En_Mantenimiento' : 'Disponible']);
+            if ($ticketPrevio) {
+                // El usuario ya reportó la falla: no se duplica el ticket ni vuelve al stock
+            } elseif ($falla) {
                 DB::table('tickets_mantenimiento')->insert([
                     'folio_ticket' => sprintf('TCK-2026-%04d', DB::table('tickets_mantenimiento')->max('id') + 1), 'activo_unidad_id' => $det->unidad_id,
                     'prestamo_id' => $det->prestamo_id, 'reportado_por' => $request->user()->id, 'origen_reporte' => 'Devolucion_Ventanilla',

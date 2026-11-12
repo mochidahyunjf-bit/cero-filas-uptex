@@ -16,7 +16,7 @@ return [
         'numbers' => ':attribute debe contener al menos un número.',
     ],
     'attributes' => [
-        'qr' => 'QR del usuario', 'codigos' => 'unidades escaneadas', 'codigo' => 'unidad devuelta', 'estado' => 'estado',
+        'qr' => 'QR del usuario', 'codigos' => 'unidades escaneadas', 'codigo' => 'código de la unidad', 'descripcion' => 'descripción de la falla', 'estado' => 'estado',
         'usuario' => 'usuario', 'password' => 'contraseña', 'motivo' => 'motivo', 'csv' => 'archivo CSV',
         'laboratorio_id' => 'laboratorio', 'bloque_id' => 'bloque', 'fecha' => 'fecha', 'asignatura' => 'asignatura', 'grupo' => 'grupo',
     ],
