@@ -1,0 +1,48 @@
+services:
+  app:
+    build: .
+    volumes:
+      - ./:/var/www/html
+    depends_on:
+      db:
+        condition: service_healthy
+
+  scheduler:
+    build: .
+    command: ["php", "artisan", "schedule:work"]
+    volumes:
+      - ./:/var/www/html
+    depends_on:
+      - app
+
+  web:
+    image: nginx:1.27-alpine
+    ports:
+      - "${APP_PORT:-8000}:80"
+    volumes:
+      - ./:/var/www/html
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: cero_filas
+      MYSQL_USER: uptex
+      MYSQL_PASSWORD: uptex
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      retries: 20
+
+  mail:
+    image: axllent/mailpit:v1.21
+    ports:
+      - "8025:8025"
+
+volumes:
+  dbdata:
